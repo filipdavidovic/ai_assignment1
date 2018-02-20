@@ -1,0 +1,4 @@
+material difference = (# of my checkers) - (# of my opponents checkers)
+number of exposed checkers
+number of protected checkers
+number of squares controlled in the middle of the board
