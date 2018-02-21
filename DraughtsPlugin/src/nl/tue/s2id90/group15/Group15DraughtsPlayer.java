@@ -9,43 +9,45 @@ import nl.tue.s2id90.draughts.player.DraughtsPlayer;
 import org10x10.dam.game.Move;
 
 /**
- * Implementation of the DraughtsPlayer interface.
- * @author huub
+ * Group 15 - Petar Galic & Filip Davidovic
  */
-// ToDo: rename this class (and hence this file) to have a distinct name
-//       for your player during the tournament
 public class Group15DraughtsPlayer extends DraughtsPlayer {
-    private int bestValue=0;
+    private int bestValue = 0;
     int maxSearchDepth;
+    int currentSearchDepth; // used by iterative deepening 
     
     /** boolean that indicates that the GUI asked the player to stop thinking. */
     private boolean stopped;
 
     public Group15DraughtsPlayer(int maxSearchDepth) {
-        super("thumbnail.jpg"); // ToDo: replace with your own icon
+        super("thumbnail.jpg");
         this.maxSearchDepth = maxSearchDepth;
     }
     
     @Override public Move getMove(DraughtsState s) {
         Move bestMove = null;
         bestValue = 0;
-        DraughtsNode node = new DraughtsNode(s);    // the root of the search tree
+        currentSearchDepth = 1;
+        DraughtsNode node = new DraughtsNode(s); // the root of the search tree, current state
         try {
-            // compute bestMove and bestValue in a call to alphabeta
-            bestValue = alphaBeta(node, MIN_VALUE, MAX_VALUE, maxSearchDepth);
-            
-            // store the bestMove found uptill now
-            // NB this is not done in case of an AIStoppedException in alphaBeat()
-            bestMove  = node.getBestMove();
-            
-            // print the results for debugging reasons
-            System.err.format(
-                "%s: depth= %2d, best move = %5s, value=%d\n", 
-                this.getClass().getSimpleName(),maxSearchDepth, bestMove, bestValue
-            );
+            while(currentSearchDepth <= maxSearchDepth) { // iterative deepening
+                // compute bestMove and bestValue in a call to alphaBeta
+                bestValue = alphaBeta(node, MIN_VALUE, MAX_VALUE, currentSearchDepth);
+
+                // store the bestMove found uptill now
+                // NB this is not done in case of an AIStoppedException in alphaBeta()
+                bestMove  = node.getBestMove();
+
+                // print the results for debugging reasons
+                System.err.format(
+                    "%s: depth= %2d, best move = %5s, value=%d\n", 
+                    this.getClass().getSimpleName(), currentSearchDepth, bestMove, bestValue
+                );
+                currentSearchDepth++;
+            }
         } catch (AIStoppedException ex) {  /* nothing to do */  }
         
-        if (bestMove==null) {
+        if (bestMove == null) {
             System.err.println("no valid move found!");
             return getRandomValidMove(s);
         } else {
@@ -61,7 +63,7 @@ public class Group15DraughtsPlayer extends DraughtsPlayer {
        return bestValue;
     }
 
-    /** Tries to make alphabeta search stop. Search should be implemented such that it
+    /** Tries to make alphaBeta search stop. Search should be implemented such that it
      * throws an AIStoppedException when boolean stopped is set to true;
     **/
     @Override public void stop() {
@@ -75,7 +77,7 @@ public class Group15DraughtsPlayer extends DraughtsPlayer {
         return moves.isEmpty()? null : moves.get(0);
     }
     
-    /** Implementation of alphabeta that automatically chooses the white player
+    /** Implementation of alphaBeta that automatically chooses the white player
      *  as maximizing player and the black player as minimizing player.
      * @param node contains DraughtsState and has field to which the best move can be assigned.
      * @param alpha
@@ -94,7 +96,7 @@ public class Group15DraughtsPlayer extends DraughtsPlayer {
         }
     }
     
-    /** Does an alphabeta computation with the given alpha and beta
+    /** Does an alphaBeta computation with the given alpha and beta
      * where the player that is to move in node is the minimizing player.
      * 
      * <p>Typical pieces of code used in this method are:
@@ -111,32 +113,83 @@ public class Group15DraughtsPlayer extends DraughtsPlayer {
      * @return the compute value of this node
      * @throws AIStoppedException thrown whenever the boolean stopped has been set to true.
      */
-     int alphaBetaMin(DraughtsNode node, int alpha, int beta, int depth)
-            throws AIStoppedException {
-        if (stopped) { stopped = false; throw new AIStoppedException(); }
+     int alphaBetaMin(DraughtsNode node, int alpha, int beta, int depth) throws AIStoppedException {
+        if (stopped) { stopped = false; throw new AIStoppedException(); } // check for the termination request by the GUI
+        if(depth == 0) { // check if the max search depth was reached. if it was, return the evaluation of the current state
+            return evaluate(node.getState());
+        }
         DraughtsState state = node.getState();
-        // ToDo: write an alphabeta search to compute bestMove and value
-        Move bestMove = state.getMoves().get(0);
-        int value = 0;
+        List<Move> possibleMoves = state.getMoves(); // all possible moves from the given state
+        Move bestMove = null;
+        for(Move possibleMove : possibleMoves) {            
+            state.doMove(possibleMove); // advance from the current state with the selected move
+            int betaN = alphaBetaMax(new DraughtsNode(state), alpha, beta, depth-1);
+            if(betaN < beta) {
+                beta = betaN;
+                bestMove = possibleMove;
+            }
+            if(beta <= alpha) { // return beta and terminate since this node is not going to be reached
+                return alpha;
+            }
+            state.undoMove(possibleMove); // unadvance from the derrived state with the selected move to get back to the current state
+        }
         node.setBestMove(bestMove);
-        return value;
+        return beta; 
      }
     
-    int alphaBetaMax(DraughtsNode node, int alpha, int beta, int depth)
-            throws AIStoppedException {
-        if (stopped) { stopped = false; throw new AIStoppedException(); }
+    int alphaBetaMax(DraughtsNode node, int alpha, int beta, int depth) throws AIStoppedException {
+        if (stopped) { stopped = false; throw new AIStoppedException(); } // check for the termination request by the GUI
+        if(depth == 0) { // check if the max search depth was reached. if it was, return the evaluation of the current state
+            return evaluate(node.getState());
+        }
         DraughtsState state = node.getState();
-        // ToDo: write an alphabeta search to compute bestMove and value
-        Move bestMove = state.getMoves().get(0);
-        int value = 0;
+        List<Move> possibleMoves = state.getMoves(); // all possible moves from the given state
+        Move bestMove = null;
+        for(Move possibleMove : possibleMoves) {
+            state.doMove(possibleMove); // advance from the current state with the selected move
+            int alphaN = alphaBetaMin(new DraughtsNode(state), alpha, beta, depth-1);
+            if(alphaN > alpha) {
+                alpha = alphaN;
+                bestMove = possibleMove;
+            }
+            if(alpha >= beta) { // return beta and terminate since this node is not going to be reached
+                return beta;
+            }
+            state.undoMove(possibleMove); // unadvance from the derrived state with the selected move to get back to the current state
+        }
         node.setBestMove(bestMove);
-        return value;
+        return alpha; 
     }
 
-    /** A method that evaluates the given state. */
-    // ToDo: write an appropriate evaluation function
+    /** A method that evaluates the given state. Takes the white player to be the maximizing one by default. */
     int evaluate(DraughtsState state) { 
-        
-        return 0; 
+        int[] pieces = state.getPieces();
+        int eval = 0;
+        // material difference
+        int whiteCount = 0;
+        int blackCount = 0;
+        final int kingWeight = 2; // ToDo: check for the correctness of the weigths by testing
+        final int normalWeight = 1;
+        for(int i = 0; i < pieces.length; i++) {
+            switch (pieces[i]) {
+                case DraughtsState.BLACKKING:
+                    blackCount += kingWeight; 
+                    break;
+                case DraughtsState.BLACKPIECE:
+                    blackCount += normalWeight;
+                    break;
+                case DraughtsState.WHITEKING:
+                    whiteCount += kingWeight;
+                    break;
+                case DraughtsState.WHITEPIECE:
+                    whiteCount += normalWeight;
+                    break;
+                default:
+                    break;
+            }
+        }
+        eval += (whiteCount - blackCount);
+        //ToDo: implement other evaluation techniques
+        return eval; 
     }
 }

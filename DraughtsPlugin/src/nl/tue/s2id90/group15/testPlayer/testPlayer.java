@@ -1,4 +1,4 @@
-package nl.tue.s2id90.group15.samples;
+package nl.tue.s2id90.group15.testPlayer;
 
 import java.util.Collections;
 import java.util.List;
@@ -11,10 +11,10 @@ import org10x10.dam.game.Move;
  * and values all moves with value 0.
  * @author huub
  */
-public class UninformedPlayer extends DraughtsPlayer {
+public class testPlayer extends DraughtsPlayer {
 
-    public UninformedPlayer() {
-        super(UninformedPlayer.class.getResource("smiley.png"));
+    public testPlayer() {
+        super(testPlayer.class.getResource("smiley.png"));
     }
     
     @Override
