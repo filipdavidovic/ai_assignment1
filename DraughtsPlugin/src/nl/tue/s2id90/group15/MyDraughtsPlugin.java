@@ -16,6 +16,6 @@ public class MyDraughtsPlugin extends DraughtsPlayerProvider implements Draughts
         // During the final competition you should make only your 
         // best player available. For testing it might be handy
         // to make more than one player available.
-        super(new Group15DraughtsPlayer(5), new testPlayer());
+        super(new BoomShakaLaka(5), new testPlayer());
     }
 }

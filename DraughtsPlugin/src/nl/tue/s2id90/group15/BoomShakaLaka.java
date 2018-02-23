@@ -11,7 +11,7 @@ import org10x10.dam.game.Move;
 /**
  * Group 15 - Petar Galic & Filip Davidovic
  */
-public class Group15DraughtsPlayer extends DraughtsPlayer {
+public class BoomShakaLaka extends DraughtsPlayer {
     private int bestValue = 0;
     int maxSearchDepth;
     int currentSearchDepth; // used by iterative deepening 
@@ -19,7 +19,7 @@ public class Group15DraughtsPlayer extends DraughtsPlayer {
     /** boolean that indicates that the GUI asked the player to stop thinking. */
     private boolean stopped;
 
-    public Group15DraughtsPlayer(int maxSearchDepth) {
+    public BoomShakaLaka(int maxSearchDepth) {
         super("thumbnail.jpg");
         this.maxSearchDepth = maxSearchDepth;
     }
@@ -121,6 +121,11 @@ public class Group15DraughtsPlayer extends DraughtsPlayer {
         DraughtsState state = node.getState();
         List<Move> possibleMoves = state.getMoves(); // all possible moves from the given state
         Move bestMove = null;
+//        String out = "\nPossible moves MIN: ";
+//        for(Move possibleMove : possibleMoves) {
+//            out += possibleMove.toString() + " ; ";
+//        }
+//        System.err.println(out);
         for(Move possibleMove : possibleMoves) {            
             state.doMove(possibleMove); // advance from the current state with the selected move
             int betaN = alphaBetaMax(new DraughtsNode(state), alpha, beta, depth-1);
@@ -145,6 +150,11 @@ public class Group15DraughtsPlayer extends DraughtsPlayer {
         DraughtsState state = node.getState();
         List<Move> possibleMoves = state.getMoves(); // all possible moves from the given state
         Move bestMove = null;
+//        String out = "\nPossible moves MAX: ";
+//        for(Move possibleMove : possibleMoves) {
+//            out += possibleMove.toString() + " ; ";
+//        }
+//        System.err.println(out);
         for(Move possibleMove : possibleMoves) {
             state.doMove(possibleMove); // advance from the current state with the selected move
             int alphaN = alphaBetaMin(new DraughtsNode(state), alpha, beta, depth-1);
