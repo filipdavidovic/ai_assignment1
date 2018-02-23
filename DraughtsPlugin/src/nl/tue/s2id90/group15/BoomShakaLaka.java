@@ -79,21 +79,15 @@ public class BoomShakaLaka extends DraughtsPlayer {
     
     /** Implementation of alphaBeta that automatically chooses the white player
      *  as maximizing player and the black player as minimizing player.
-     * @param node contains DraughtsState and has field to which the best move can be assigned.
+     * @param rootNode contains DraughtsState and has field to which the best move can be assigned.
      * @param alpha
      * @param beta
      * @param depth maximum recursion Depth
-     * @return the computed value of this node
+     * @return the computed value of this rootNode
      * @throws AIStoppedException
      **/
-    int alphaBeta(DraughtsNode node, int alpha, int beta, int depth)
-            throws AIStoppedException
-    {
-        if (node.getState().isWhiteToMove()) {
-            return alphaBetaMax(node, alpha, beta, depth);
-        } else  {
-            return alphaBetaMin(node, alpha, beta, depth);
-        }
+    int alphaBeta(DraughtsNode rootNode, int alpha, int beta, int depth) throws AIStoppedException {
+        return alphaBetaMax(rootNode, alpha, beta, depth);
     }
     
     /** Does an alphaBeta computation with the given alpha and beta
@@ -121,11 +115,11 @@ public class BoomShakaLaka extends DraughtsPlayer {
         DraughtsState state = node.getState();
         List<Move> possibleMoves = state.getMoves(); // all possible moves from the given state
         Move bestMove = null;
-//        String out = "\nPossible moves MIN: ";
-//        for(Move possibleMove : possibleMoves) {
-//            out += possibleMove.toString() + " ; ";
-//        }
-//        System.err.println(out);
+        String out = "\nPossible moves MIN (depth=" + depth + "): ";
+        for(Move possibleMove : possibleMoves) {
+            out += possibleMove.toString() + " ; ";
+        }
+        System.err.println(out);
         for(Move possibleMove : possibleMoves) {            
             state.doMove(possibleMove); // advance from the current state with the selected move
             int betaN = alphaBetaMax(new DraughtsNode(state), alpha, beta, depth-1);
@@ -150,11 +144,11 @@ public class BoomShakaLaka extends DraughtsPlayer {
         DraughtsState state = node.getState();
         List<Move> possibleMoves = state.getMoves(); // all possible moves from the given state
         Move bestMove = null;
-//        String out = "\nPossible moves MAX: ";
-//        for(Move possibleMove : possibleMoves) {
-//            out += possibleMove.toString() + " ; ";
-//        }
-//        System.err.println(out);
+        String out = "\nPossible moves MAX (depth=" + depth + "): ";
+        for(Move possibleMove : possibleMoves) {
+            out += possibleMove.toString() + " ; ";
+        }
+        System.err.println(out);
         for(Move possibleMove : possibleMoves) {
             state.doMove(possibleMove); // advance from the current state with the selected move
             int alphaN = alphaBetaMin(new DraughtsNode(state), alpha, beta, depth-1);
@@ -171,8 +165,9 @@ public class BoomShakaLaka extends DraughtsPlayer {
         return alpha; 
     }
 
-    /** A method that evaluates the given state. Takes the white player to be the maximizing one by default. */
+    /** A method that evaluates the given state. */
     int evaluate(DraughtsState state) { 
+        boolean isWhite = state.isWhiteToMove();
         int[] pieces = state.getPieces();
         int eval = 0;
         // material difference
@@ -198,7 +193,12 @@ public class BoomShakaLaka extends DraughtsPlayer {
                     break;
             }
         }
-        eval += (whiteCount - blackCount);
+        if(isWhite) {
+            eval += (whiteCount - blackCount);
+        } else {
+            eval += (blackCount - whiteCount);
+        }
+        
         //ToDo: implement other evaluation techniques
         return eval; 
     }
