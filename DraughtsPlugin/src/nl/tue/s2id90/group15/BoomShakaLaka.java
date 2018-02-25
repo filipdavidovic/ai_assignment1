@@ -127,10 +127,11 @@ public class BoomShakaLaka extends DraughtsPlayer {
                 beta = betaN;
                 bestMove = possibleMove;
             }
+            
+            state.undoMove(possibleMove); // unadvance from the derrived state with the selected move to get back to the current state
             if(beta <= alpha) { // return beta and terminate since this node is not going to be reached
                 return alpha;
             }
-            state.undoMove(possibleMove); // unadvance from the derrived state with the selected move to get back to the current state
         }
         node.setBestMove(bestMove);
         return beta; 
@@ -156,10 +157,10 @@ public class BoomShakaLaka extends DraughtsPlayer {
                 alpha = alphaN;
                 bestMove = possibleMove;
             }
+            state.undoMove(possibleMove); // unadvance from the derrived state with the selected move to get back to the current state
             if(alpha >= beta) { // return beta and terminate since this node is not going to be reached
                 return beta;
             }
-            state.undoMove(possibleMove); // unadvance from the derrived state with the selected move to get back to the current state
         }
         node.setBestMove(bestMove);
         return alpha; 
