@@ -159,6 +159,8 @@ public class BoomShakaLaka extends DraughtsPlayer {
     int evaluate(DraughtsState state) { 
         int[] pieces = state.getPieces();
         int eval = 0;
+        int[] protectedPieces = new int[]{1,2,3,4,5,6,15,16,25,26,35,36,45,46,47,48,49,50};
+        int protectedNumber = 0;
         // material difference
         int whiteCount = 0;
         int blackCount = 0;
@@ -167,7 +169,7 @@ public class BoomShakaLaka extends DraughtsPlayer {
         for(int i = 0; i < pieces.length; i++) {
             switch (pieces[i]) {
                 case DraughtsState.BLACKKING:
-                    blackCount += kingWeight; 
+                    blackCount += kingWeight;
                     break;
                 case DraughtsState.BLACKPIECE:
                     blackCount += normalWeight;
@@ -182,11 +184,43 @@ public class BoomShakaLaka extends DraughtsPlayer {
                     break;
             }
         }
-        if(isWhite) {
-            eval += (whiteCount - blackCount);
-        } else {
-            eval += (blackCount - whiteCount);
+        
+        //number of protected pieces heuristics
+        for (int i =0;i<protectedPieces.length;i++) {
+            switch(pieces[protectedPieces[i]]) {
+            case DraughtsState.BLACKKING:
+                    if (!isWhite) {
+                        protectedNumber+=1;
+                    }
+                    break;
+                case DraughtsState.BLACKPIECE:
+                    if (!isWhite) {
+                        protectedNumber+=1;
+                    }
+                    break;
+                case DraughtsState.WHITEKING:
+                    if (isWhite) {
+                        protectedNumber+=1;
+                    }
+                    break;
+                case DraughtsState.WHITEPIECE:
+                    if (isWhite) {
+                        protectedNumber+=1;
+                    }
+                    break;
+                default:
+                    break;
+            }
         }
+        
+        if(isWhite) {
+            eval += (whiteCount - blackCount)+protectedNumber;
+        } else {
+            eval += (blackCount - whiteCount)+protectedNumber;
+        }
+        
+        
+        
         
         //ToDo: implement other evaluation techniques
         return eval; 
