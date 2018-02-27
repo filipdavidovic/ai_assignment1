@@ -15,6 +15,7 @@ public class BoomShakaLaka extends DraughtsPlayer {
     private int bestValue = 0;
     int maxSearchDepth;
     int currentSearchDepth; // used by iterative deepening 
+    boolean isWhite;
     
     /** boolean that indicates that the GUI asked the player to stop thinking. */
     private boolean stopped;
@@ -26,6 +27,7 @@ public class BoomShakaLaka extends DraughtsPlayer {
     
     @Override public Move getMove(DraughtsState s) {
         Move bestMove = null;
+        isWhite = s.isWhiteToMove();
         bestValue = 0;
         currentSearchDepth = 1;
         DraughtsNode node = new DraughtsNode(s); // the root of the search tree, current state
@@ -114,41 +116,29 @@ public class BoomShakaLaka extends DraughtsPlayer {
         }
         DraughtsState state = node.getState();
         List<Move> possibleMoves = state.getMoves(); // all possible moves from the given state
-        Move bestMove = null;
-        String out = "\nPossible moves MIN (depth=" + depth + "): ";
-        for(Move possibleMove : possibleMoves) {
-            out += possibleMove.toString() + " ; ";
-        }
-        System.err.println(out);
         for(Move possibleMove : possibleMoves) {            
             state.doMove(possibleMove); // advance from the current state with the selected move
             int betaN = alphaBetaMax(new DraughtsNode(state), alpha, beta, depth-1);
             if(betaN < beta) {
                 beta = betaN;
-                bestMove = possibleMove;
             }
+            state.undoMove(possibleMove); // unadvance from the derrived state with the selected move to get back to the current state
             if(beta <= alpha) { // return beta and terminate since this node is not going to be reached
                 return alpha;
             }
-            state.undoMove(possibleMove); // unadvance from the derrived state with the selected move to get back to the current state
         }
-        node.setBestMove(bestMove);
         return beta; 
      }
     
     int alphaBetaMax(DraughtsNode node, int alpha, int beta, int depth) throws AIStoppedException {
         if (stopped) { stopped = false; throw new AIStoppedException(); } // check for the termination request by the GUI
         if(depth == 0) { // check if the max search depth was reached. if it was, return the evaluation of the current state
+            System.err.print("   " + evaluate(node.getState()));
             return evaluate(node.getState());
         }
         DraughtsState state = node.getState();
         List<Move> possibleMoves = state.getMoves(); // all possible moves from the given state
         Move bestMove = null;
-        String out = "\nPossible moves MAX (depth=" + depth + "): ";
-        for(Move possibleMove : possibleMoves) {
-            out += possibleMove.toString() + " ; ";
-        }
-        System.err.println(out);
         for(Move possibleMove : possibleMoves) {
             state.doMove(possibleMove); // advance from the current state with the selected move
             int alphaN = alphaBetaMin(new DraughtsNode(state), alpha, beta, depth-1);
@@ -156,10 +146,10 @@ public class BoomShakaLaka extends DraughtsPlayer {
                 alpha = alphaN;
                 bestMove = possibleMove;
             }
+            state.undoMove(possibleMove); // unadvance from the derrived state with the selected move to get back to the current state
             if(alpha >= beta) { // return beta and terminate since this node is not going to be reached
                 return beta;
             }
-            state.undoMove(possibleMove); // unadvance from the derrived state with the selected move to get back to the current state
         }
         node.setBestMove(bestMove);
         return alpha; 
@@ -167,7 +157,6 @@ public class BoomShakaLaka extends DraughtsPlayer {
 
     /** A method that evaluates the given state. */
     int evaluate(DraughtsState state) { 
-        boolean isWhite = state.isWhiteToMove();
         int[] pieces = state.getPieces();
         int eval = 0;
         // material difference
