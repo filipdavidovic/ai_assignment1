@@ -118,7 +118,7 @@ public class BoomShakaLaka extends DraughtsPlayer {
         List<Move> possibleMoves = state.getMoves(); // all possible moves from the given state
         for(Move possibleMove : possibleMoves) {            
             state.doMove(possibleMove); // advance from the current state with the selected move
-            int betaN = alphaBetaMax(new DraughtsNode(state), alpha, beta, depth-1);
+            int betaN = alphaBetaMax(new DraughtsNode(state), alpha, beta, depth - 1);
             if(betaN < beta) {
                 beta = betaN;
             }
@@ -133,7 +133,6 @@ public class BoomShakaLaka extends DraughtsPlayer {
     int alphaBetaMax(DraughtsNode node, int alpha, int beta, int depth) throws AIStoppedException {
         if (stopped) { stopped = false; throw new AIStoppedException(); } // check for the termination request by the GUI
         if(depth == 0) { // check if the max search depth was reached. if it was, return the evaluation of the current state
-            System.err.print("   " + evaluate(node.getState()));
             return evaluate(node.getState());
         }
         DraughtsState state = node.getState();
@@ -141,7 +140,7 @@ public class BoomShakaLaka extends DraughtsPlayer {
         Move bestMove = null;
         for(Move possibleMove : possibleMoves) {
             state.doMove(possibleMove); // advance from the current state with the selected move
-            int alphaN = alphaBetaMin(new DraughtsNode(state), alpha, beta, depth-1);
+            int alphaN = alphaBetaMin(new DraughtsNode(state), alpha, beta, depth - 1);
             if(alphaN > alpha) {
                 alpha = alphaN;
                 bestMove = possibleMove;
@@ -154,13 +153,102 @@ public class BoomShakaLaka extends DraughtsPlayer {
         node.setBestMove(bestMove);
         return alpha; 
     }
+    
+    private boolean arrayContains(int[] array, int key) {
+        for(int i = 0; i < array.length; i++) {
+            if(array[i] == key) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    private boolean isSquareProtected(int[] pieces, int square) {
+        final int[] lower = new int[] {-5, 6, -4, 5};
+        final int[] higher = new int[] {-6, 5, -5, 4};
+        final int[] edgeSquares = new int[] {1, 2, 3, 4, 5, 6, 15, 16, 25, 26, 35, 36, 45, 46, 47, 48, 49, 50};
+        final int myPiece = isWhite ? DraughtsState.WHITEPIECE : DraughtsState.BLACKPIECE;
+        final int myKing = isWhite ? DraughtsState.WHITEKING : DraughtsState.BLACKKING;
+        
+        // initiate variables used by the while loop later to determine in which order to increment to go by the diagonal
+        boolean isLower = false;
+        int[] tar = higher;
+        if(square % 10 <= 5 && square % 10 >= 1) {
+            isLower = true;
+            tar = lower;
+        }
+        
+        // check whether the square is protected with a piece from a square directly adjacent to it
+        if(pieces[square + tar[0]] == DraughtsState.EMPTY && pieces[square + tar[1]] == myPiece) {
+            return true;
+        }
+        if(pieces[square + tar[1]] == DraughtsState.EMPTY && pieces[square + tar[0]] == myPiece) {
+            return true;
+        }
+        if(pieces[square + tar[2]] == DraughtsState.EMPTY && pieces[square + tar[3]] == myPiece) {
+            return true;
+        }
+        if(pieces[square + tar[3]] == DraughtsState.EMPTY && pieces[square + tar[2]] == myPiece) {
+            return true;
+        }
+        // for a square to be protected there needs to be a king on one side of its diagonal, and an empty square on the other 
+        // initiate the variables used to check for this
+        boolean hasKingMinus = false, hasEmptyMinus = false, hasKingPlus = false, hasEmptyPlus = false;
+        for(int i = 0; i < 4; i++) {
+            // if i % 2 == 0 cross check has been done and the variables are initialize again for the other cross check
+            if(i % 2 == 0) {
+                hasKingMinus = false;
+                hasEmptyMinus = false;
+                hasKingPlus = false;
+                hasEmptyPlus = false;
+            }
+            // initiate n so that we don't change square
+            int n = square;
+            // set flip flop to the previously defined diagonal order
+            boolean flipFlop = isLower;
+            while(!arrayContains(edgeSquares, n)) { // run the loop until an edge of a board is reached
+                if(pieces[n] == myKing) { // check whether the square on the diagonal contains our king
+                    // set the appropriate variable to true
+                    if(i % 2 == 0) {
+                        hasKingMinus = true;
+                    } else {
+                        hasKingPlus = true;
+                    }
+                    // break because the potential king on the other side cannot jump over this one
+                    break;
+                } else if(pieces[n] == DraughtsState.EMPTY) { // check whether the square on the diagonal contains an empty square
+                    // set the appropriate variable to true
+                    if(i % 2 == 0) {
+                        hasEmptyMinus = true;
+                    } else {
+                        hasEmptyPlus = true;
+                    }
+                } else {
+                    break;
+                }
+                // go on the diagonal in the appropriate direction
+                if(flipFlop) {
+                    n += lower[i];
+                    flipFlop = false;
+                } else {
+                    n += higher[i];
+                    flipFlop = true;
+                }
+            }
+            // at the end of the traversal on one diagonal, check whether there is a king on on side and an empty space on the other (if yes the square is protected)
+            if(i % 2 == 1 && ((hasKingMinus && hasEmptyPlus) || (hasKingPlus && hasEmptyMinus))) {
+                return true;
+            }
+        }
+        // no matches found, return false
+        return false;
+    }
 
     /** A method that evaluates the given state. */
     int evaluate(DraughtsState state) { 
         int[] pieces = state.getPieces();
         int eval = 0;
-        int[] protectedPieces = new int[]{1,2,3,4,5,6,15,16,25,26,35,36,45,46,47,48,49,50};
-        int protectedNumber = 0;
         // material difference
         int whiteCount = 0;
         int blackCount = 0;
@@ -186,6 +274,8 @@ public class BoomShakaLaka extends DraughtsPlayer {
         }
         
         //number of protected pieces heuristics
+        int[] protectedPieces = new int[] {1,2,3,4,5,6,15,16,25,26,35,36,45,46,47,48,49,50};
+        int protectedNumber = 0;
         for (int i =0;i<protectedPieces.length;i++) {
             switch(pieces[protectedPieces[i]]) {
             case DraughtsState.BLACKKING:
@@ -213,11 +303,21 @@ public class BoomShakaLaka extends DraughtsPlayer {
             }
         }
         
-        if(isWhite) {
-            eval += (whiteCount - blackCount)+protectedNumber;
-        } else {
-            eval += (blackCount - whiteCount)+protectedNumber;
+        // number of squares protected in the middle
+        int protectedMiddleSquares = 0;
+        for(int i = 16; i <= 35; i++) {
+            if(isSquareProtected(pieces, i)) {
+                protectedMiddleSquares++;
+            }
         }
+        
+        if(isWhite) {
+            eval += (whiteCount - blackCount);
+        } else {
+            eval += (blackCount - whiteCount);
+        }
+        
+        eval += protectedNumber + protectedMiddleSquares;
         
         
         

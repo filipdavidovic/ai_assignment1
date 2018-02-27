@@ -26,35 +26,36 @@ public class testPlayer extends DraughtsPlayer {
     }
     
     @Override public Move getMove(DraughtsState s) {
-        Move bestMove = null;
-        isWhite = s.isWhiteToMove();
-        bestValue = 0;
-        currentSearchDepth = 1;
-        DraughtsNode node = new DraughtsNode(s); // the root of the search tree, current state
-        try {
-            while(currentSearchDepth <= maxSearchDepth) { // iterative deepening
-                // compute bestMove and bestValue in a call to alphaBeta
-                bestValue = alphaBeta(node, MIN_VALUE, MAX_VALUE, currentSearchDepth);
-
-                // store the bestMove found uptill now
-                // NB this is not done in case of an AIStoppedException in alphaBeta()
-                bestMove  = node.getBestMove();
-
-                // print the results for debugging reasons
-                System.err.format(
-                    "%s: depth= %2d, best move = %5s, value=%d\n", 
-                    this.getClass().getSimpleName(), currentSearchDepth, bestMove, bestValue
-                );
-                currentSearchDepth++;
-            }
-        } catch (AIStoppedException ex) {  /* nothing to do */  }
-        
-        if (bestMove == null) {
-            System.err.println("no valid move found!");
-            return getRandomValidMove(s);
-        } else {
-            return bestMove;
-        }
+        return getRandomValidMove(s);
+//        Move bestMove = null;
+//        isWhite = s.isWhiteToMove();
+//        bestValue = 0;
+//        currentSearchDepth = 1;
+//        DraughtsNode node = new DraughtsNode(s); // the root of the search tree, current state
+//        try {
+//            while(currentSearchDepth <= maxSearchDepth) { // iterative deepening
+//                // compute bestMove and bestValue in a call to alphaBeta
+//                bestValue = alphaBeta(node, MIN_VALUE, MAX_VALUE, currentSearchDepth);
+//
+//                // store the bestMove found uptill now
+//                // NB this is not done in case of an AIStoppedException in alphaBeta()
+//                bestMove  = node.getBestMove();
+//
+//                // print the results for debugging reasons
+//                System.err.format(
+//                    "%s: depth= %2d, best move = %5s, value=%d\n", 
+//                    this.getClass().getSimpleName(), currentSearchDepth, bestMove, bestValue
+//                );
+//                currentSearchDepth++;
+//            }
+//        } catch (AIStoppedException ex) {  /* nothing to do */  }
+//        
+//        if (bestMove == null) {
+//            System.err.println("no valid move found!");
+//            return getRandomValidMove(s);
+//        } else {
+//            return bestMove;
+//        }
     } 
 
     /** This method's return value is displayed in the AICompetition GUI.
@@ -133,7 +134,6 @@ public class testPlayer extends DraughtsPlayer {
     int alphaBetaMax(DraughtsNode node, int alpha, int beta, int depth) throws AIStoppedException {
         if (stopped) { stopped = false; throw new AIStoppedException(); } // check for the termination request by the GUI
         if(depth == 0) { // check if the max search depth was reached. if it was, return the evaluation of the current state
-            System.err.print("   " + evaluate(node.getState()));
             return evaluate(node.getState());
         }
         DraughtsState state = node.getState();
