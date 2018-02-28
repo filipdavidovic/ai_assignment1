@@ -1,12 +1,13 @@
 Priority:
 runaway kings (free path to becoming a king)
 trapped kings (king unable to move)
-number of squares controlled in the middle of the board
+square weight (check weights.png)
 
 Could have:
 implement known openings and closings
-number of protected checkers
 number of exposed checkers
 
 Implemented:
 material difference = (# of my checkers) - (# of my opponents checkers)
+number of protected checkers
+number of squares controlled in the middle of the board
