@@ -2,6 +2,7 @@ package nl.tue.s2id90.group15;
 
 import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.MIN_VALUE;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import nl.tue.s2id90.draughts.DraughtsState;
@@ -285,6 +286,8 @@ public class BoomShakaLaka extends DraughtsPlayer {
     int evaluate(DraughtsState state) { 
         int[] pieces = state.getPieces();
         int eval = 0;
+        ArrayList<Integer> blackKings = new ArrayList<>();
+        ArrayList<Integer> whiteKings = new ArrayList<>();
         
         // material difference with weights
         int whiteCount = 0;
@@ -296,12 +299,14 @@ public class BoomShakaLaka extends DraughtsPlayer {
             switch (pieces[i]) {
                 case DraughtsState.BLACKKING:
                     blackCount += squareWeights[i - 1] * kingWeight;
+                    blackKings.add(i);
                     break;
                 case DraughtsState.BLACKPIECE:
                     blackCount += squareWeights[i - 1] * normalWeight;
                     break;
                 case DraughtsState.WHITEKING:
                     whiteCount += squareWeights[i - 1] * kingWeight;
+                    whiteKings.add(i);
                     break;
                 case DraughtsState.WHITEPIECE:
                     whiteCount += squareWeights[i - 1] * normalWeight;
@@ -393,12 +398,30 @@ public class BoomShakaLaka extends DraughtsPlayer {
             }
         }
         
+        //trapped kings
+        List<Move> availableMoves = state.getMoves();
+        for(Move move: availableMoves) {
+            if (move.isKingMove()) {
+                if (isWhite) {
+                    if (whiteKings.contains(move.getBeginPiece())) {
+                        whiteKings.remove(move.getBeginPiece());
+                    }
+                }
+                else {
+                    if(blackKings.contains(move.getBeginPiece())) {
+                        blackKings.remove(move.getBeginPiece());
+                    }
+                }
+            }
+        }
+        
+        
         
         // calculate the final result and return 
         if(isWhite) {
-            eval += (whiteCount - blackCount);
+            eval += (whiteCount - blackCount)-whiteKings.size();
         } else {
-            eval += (blackCount - whiteCount);
+            eval += (blackCount - whiteCount)-blackKings.size();
         }
         eval += protectedNumber + protectedMiddleSquares + runawayPieces;
         
