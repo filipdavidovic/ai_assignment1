@@ -249,24 +249,26 @@ public class BoomShakaLaka extends DraughtsPlayer {
     int evaluate(DraughtsState state) { 
         int[] pieces = state.getPieces();
         int eval = 0;
+        
         // material difference
         int whiteCount = 0;
         int blackCount = 0;
         final int kingWeight = 2; // ToDo: check for the correctness of the weigths by testing
         final int normalWeight = 1;
-        for(int i = 0; i < pieces.length; i++) {
+        final int[] squareWeights = new int[] {5, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 5, 5, 3, 2, 2, 4, 4, 2, 1, 3, 5, 5, 3, 1, 2, 4, 4, 2, 2, 3, 5, 5, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5};
+        for(int i = 1; i < pieces.length; i++) {
             switch (pieces[i]) {
                 case DraughtsState.BLACKKING:
-                    blackCount += kingWeight;
+                    blackCount += squareWeights[i - 1] * kingWeight;
                     break;
                 case DraughtsState.BLACKPIECE:
-                    blackCount += normalWeight;
+                    blackCount += squareWeights[i - 1] * normalWeight;
                     break;
                 case DraughtsState.WHITEKING:
-                    whiteCount += kingWeight;
+                    whiteCount += squareWeights[i - 1] * kingWeight;
                     break;
                 case DraughtsState.WHITEPIECE:
-                    whiteCount += normalWeight;
+                    whiteCount += squareWeights[i - 1] * normalWeight;
                     break;
                 default:
                     break;
@@ -274,28 +276,28 @@ public class BoomShakaLaka extends DraughtsPlayer {
         }
         
         //number of protected pieces heuristics
-        int[] protectedPieces = new int[] {1,2,3,4,5,6,15,16,25,26,35,36,45,46,47,48,49,50};
+        int[] protectedPieces = new int[] {1, 2, 3, 4, 5, 6, 15, 16, 25, 26, 35, 36, 45, 46, 47, 48, 49, 50};
         int protectedNumber = 0;
         for (int i =0;i<protectedPieces.length;i++) {
             switch(pieces[protectedPieces[i]]) {
             case DraughtsState.BLACKKING:
                     if (!isWhite) {
-                        protectedNumber+=1;
+                        protectedNumber += 1;
                     }
                     break;
                 case DraughtsState.BLACKPIECE:
                     if (!isWhite) {
-                        protectedNumber+=1;
+                        protectedNumber += 1;
                     }
                     break;
                 case DraughtsState.WHITEKING:
                     if (isWhite) {
-                        protectedNumber+=1;
+                        protectedNumber += 1;
                     }
                     break;
                 case DraughtsState.WHITEPIECE:
                     if (isWhite) {
-                        protectedNumber+=1;
+                        protectedNumber += 1;
                     }
                     break;
                 default:

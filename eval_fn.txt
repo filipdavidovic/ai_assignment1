@@ -1,7 +1,7 @@
 Priority:
 runaway kings (free path to becoming a king)
 trapped kings (king unable to move)
-square weight (check weights.png)
+square weight (check board.png)
 
 Could have:
 implement known openings and closings
