@@ -154,6 +154,7 @@ public class BoomShakaLaka extends DraughtsPlayer {
         return alpha; 
     }
     
+    // Method that checks whether the key is contained in the array (only works for int arrays and keys)
     private boolean arrayContains(int[] array, int key) {
         for(int i = 0; i < array.length; i++) {
             if(array[i] == key) {
@@ -164,6 +165,7 @@ public class BoomShakaLaka extends DraughtsPlayer {
         return false;
     }
     
+    // A method that checks whether the given square is protected
     private boolean isSquareProtected(int[] pieces, int square) {
         final int[] lower = new int[] {-5, 6, -4, 5};
         final int[] higher = new int[] {-6, 5, -5, 4};
@@ -244,13 +246,47 @@ public class BoomShakaLaka extends DraughtsPlayer {
         // no matches found, return false
         return false;
     }
+    
+    // Method that returns the two squares either up or down (depending on direction) from the current one
+    int[] nextSquare(int current, String direction)  {
+        final int[] lower = new int[] {-5, -4, 5, 6};
+        final int[] higher = new int[] {-6, -5, 4, 5};
+        int[] ret = new int[2];
+        boolean isLower = false;
+        if(current % 10 <= 5 && current % 10 >= 1) {
+            isLower = true;
+        }
+        
+        switch(direction) {
+            case "up":
+                if(isLower) {
+                    ret[0] = current + lower[0];
+                    ret[1] = current + lower[1];
+                } else {
+                    ret[0] = current + higher[0];
+                    ret[1] = current + higher[1];
+                }
+                break;
+            case "down":
+                if(isLower) {
+                    ret[0] = current + lower[2];
+                    ret[1] = current + lower[3];
+                } else {
+                    ret[0] = current + higher[2];
+                    ret[1] = current + higher[3];
+                }
+                break;
+        }
+        
+        return ret;
+    }
 
     /** A method that evaluates the given state. */
     int evaluate(DraughtsState state) { 
         int[] pieces = state.getPieces();
         int eval = 0;
         
-        // material difference
+        // material difference with weights
         int whiteCount = 0;
         int blackCount = 0;
         final int kingWeight = 2; // ToDo: check for the correctness of the weigths by testing
@@ -313,18 +349,59 @@ public class BoomShakaLaka extends DraughtsPlayer {
             }
         }
         
+        // runaway pieces (free path to becoming a king)
+        int runawayPieces = 0;
+        int[] endSquares;
+        int myPiece = isWhite ? DraughtsState.WHITEPIECE : DraughtsState.BLACKPIECE;
+        if(isWhite) {
+            endSquares = new int[] {1, 2, 3, 4, 5};
+        } else {
+            endSquares = new int[] {46, 47, 48, 49, 50};
+        }
+        for(int i = 1; i < pieces.length; i++) {
+            if(pieces[i] == myPiece) {
+                int n = i;
+                boolean reachedEnd = false;
+                while(!reachedEnd) {
+                    int[] newSquares;
+                    if(isWhite) {
+                        newSquares = nextSquare(n, "up");
+                        n -= 10;
+                    } else {
+                        newSquares = nextSquare(n, "down");
+                        n += 10;
+                    }
+                    // check if any of the squares contains a piece (if yes the inspected piece is not runaway, so brek the loop)
+                    if(n >= 1 && n <= 50 && pieces[n] != DraughtsState.EMPTY) {
+                        break;
+                    }
+                    if(newSquares[0] >= 1 && newSquares[0] <= 50 && pieces[newSquares[0]] != DraughtsState.EMPTY) {
+                        break;
+                    }
+                    if(newSquares[1] >= 1 && newSquares[1] <= 50 && pieces[newSquares[1]] != DraughtsState.EMPTY) {
+                        break;
+                    }
+                    
+                    // check for the termination of the while loop (reached the end of the board)
+                    if(!(n >= 1 && n <= 50) || arrayContains(endSquares, n)) {
+                        reachedEnd = true;
+                    }
+                }
+                if(reachedEnd) {
+                    runawayPieces++;
+                }
+            }
+        }
+        
+        
+        // calculate the final result and return 
         if(isWhite) {
             eval += (whiteCount - blackCount);
         } else {
             eval += (blackCount - whiteCount);
         }
+        eval += protectedNumber + protectedMiddleSquares + runawayPieces;
         
-        eval += protectedNumber + protectedMiddleSquares;
-        
-        
-        
-        
-        //ToDo: implement other evaluation techniques
         return eval; 
     }
 }
