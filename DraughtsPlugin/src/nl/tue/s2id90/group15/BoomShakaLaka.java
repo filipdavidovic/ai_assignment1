@@ -157,16 +157,19 @@ public class BoomShakaLaka extends DraughtsPlayer {
     
     // Method that checks whether the key is contained in the array (only works for int arrays and keys)
     private boolean arrayContains(int[] array, int key) {
-        for(int i = 0; i < array.length; i++) {
-            if(array[i] == key) {
-                return true;
+        for(int i = 0; i < array.length; i++) { // cycle through the whole array
+            if(array[i] == key) { // if the entry in the array equals the key
+                return true; // the array contains the key and the function returns true
             }
         }
         
-        return false;
+        return false; // return false if the match is not found
     }
     
     // A method that checks whether the given square is protected
+    // square is protected if:
+    // - there is a piece on one side of its diagonal and an empty square on the other side of the diagoanl (this stands for either of the two diagonals)
+    // - the first piece on one side of the diagonal is a king, and there exists an empty square on the other side of its diagonal before any other piece (this stans for either of the two diagonals)
     private boolean isSquareProtected(int[] pieces, int square) {
         final int[] lower = new int[] {-5, 6, -4, 5};
         final int[] higher = new int[] {-6, 5, -5, 4};
@@ -250,15 +253,12 @@ public class BoomShakaLaka extends DraughtsPlayer {
     
     // Method that returns the two squares either up or down (depending on direction) from the current one
     int[] nextSquare(int current, String direction)  {
-        final int[] lower = new int[] {-5, -4, 5, 6};
-        final int[] higher = new int[] {-6, -5, 4, 5};
-        int[] ret = new int[2];
-        boolean isLower = false;
-        if(current % 10 <= 5 && current % 10 >= 1) {
-            isLower = true;
-        }
+        final int[] lower = new int[] {-5, -4, 5, 6}; // left up, right up, left down, right down (1 <= current % 10 <= 5)
+        final int[] higher = new int[] {-6, -5, 4, 5}; // left up, right up, left down, right down (6 <= current % 10 <= 9 || current % 10 == 0)
+        int[] ret = new int[2]; // array that is to be returned after required calculations
+        boolean isLower = current % 10 <= 5 && current % 10 >= 1; 
         
-        switch(direction) {
+        switch(direction) { // depending on the direction parameter calculate the upper or lower two squares
             case "up":
                 if(isLower) {
                     ret[0] = current + lower[0];
@@ -284,31 +284,31 @@ public class BoomShakaLaka extends DraughtsPlayer {
 
     /** A method that evaluates the given state. */
     int evaluate(DraughtsState state) { 
-        int[] pieces = state.getPieces();
-        int eval = 0;
+        int[] pieces = state.getPieces(); // array that contains the board state
+        int eval = 0; // variable used to calculate the heuristic evaluation of the state
         ArrayList<Integer> blackKings = new ArrayList<>();
         ArrayList<Integer> whiteKings = new ArrayList<>();
         
         // material difference with weights
-        int whiteCount = 0;
-        int blackCount = 0;
-        final int kingWeight = 2; // ToDo: check for the correctness of the weigths by testing
-        final int normalWeight = 1;
-        final int[] squareWeights = new int[] {5, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 5, 5, 3, 2, 2, 4, 4, 2, 1, 3, 5, 5, 3, 1, 2, 4, 4, 2, 2, 3, 5, 5, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5};
-        for(int i = 1; i < pieces.length; i++) {
-            switch (pieces[i]) {
-                case DraughtsState.BLACKKING:
+        int whiteCount = 0; // number of white's pieces
+        int blackCount = 0; // number of black's pieces
+        final int kingWeight = 2; // weight given to a king
+        final int normalWeight = 1; // weight given to a regular piece
+        final int[] squareWeights = new int[] {5, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 5, 5, 3, 2, 2, 4, 4, 2, 1, 3, 5, 5, 3, 1, 2, 4, 4, 2, 2, 3, 5, 5, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5}; // the weight of each square
+        for(int i = 1; i < pieces.length; i++) { // loop that iterates through the whole board
+            switch (pieces[i]) { 
+                case DraughtsState.BLACKKING: // if the piece is a black king, add the king weight multiplied with the square weight to the black's piece count
                     blackCount += squareWeights[i - 1] * kingWeight;
-                    blackKings.add(i);
+                    blackKings.add(i); 
                     break;
-                case DraughtsState.BLACKPIECE:
+                case DraughtsState.BLACKPIECE: // if the piece is a black piece, add the normal piece weight multiplied with the square weight to the black's piece count
                     blackCount += squareWeights[i - 1] * normalWeight;
                     break;
-                case DraughtsState.WHITEKING:
+                case DraughtsState.WHITEKING: // if the piece is a white king, add the king weight multiplied with the square weight to the white's piece count
                     whiteCount += squareWeights[i - 1] * kingWeight;
                     whiteKings.add(i);
                     break;
-                case DraughtsState.WHITEPIECE:
+                case DraughtsState.WHITEPIECE: // if the piece is a white piece, add the normal piece weight multiplied with the square weight to the white's piece count
                     whiteCount += squareWeights[i - 1] * normalWeight;
                     break;
                 default:
@@ -347,43 +347,41 @@ public class BoomShakaLaka extends DraughtsPlayer {
         }
         
         // number of squares protected in the middle
-        int protectedMiddleSquares = 0;
-        for(int i = 16; i <= 35; i++) {
-            if(isSquareProtected(pieces, i)) {
-                protectedMiddleSquares++;
+        int protectedMiddleSquares = 0; // variable used to store the number of protected squares in the middle
+        for(int i = 16; i <= 35; i++) { // middle are squares from 16 to 35 (including 16 and 35)
+            if(isSquareProtected(pieces, i)) { // check whether the square is protected by calling the isSquareProtected function
+                protectedMiddleSquares++; // if the function returns true, the square is protected, so we can increment the number of protected squares
             }
         }
         
         // runaway pieces (free path to becoming a king)
-        int runawayPieces = 0;
-        int[] endSquares;
-        int myPiece = isWhite ? DraughtsState.WHITEPIECE : DraughtsState.BLACKPIECE;
-        if(isWhite) {
+        int runawayPieces = 0; // variable used to store the number of runaway pieces
+        int[] endSquares; // array that contains the five squares at the end of the board (uninitialized because the end squares depend on the side the player is playing)
+        int myPiece = isWhite ? DraughtsState.WHITEPIECE : DraughtsState.BLACKPIECE; // variable that stores the value of our piece
+        if(isWhite) { // if statement that assigns the appropriate values to endSquares (with respect to isWhite)
             endSquares = new int[] {1, 2, 3, 4, 5};
         } else {
             endSquares = new int[] {46, 47, 48, 49, 50};
         }
-        for(int i = 1; i < pieces.length; i++) {
-            if(pieces[i] == myPiece) {
-                int n = i;
-                boolean reachedEnd = false;
-                while(!reachedEnd) {
-                    int[] newSquares;
-                    if(isWhite) {
-                        newSquares = nextSquare(n, "up");
-                        n -= 10;
+        for(int i = 1; i < pieces.length; i++) { // loop that cycles through all the squares
+            if(pieces[i] == myPiece) { // only inspect our pieces (not kings, but normal pieces)
+                int n = i; // variable that stores the number of the square currently inspected in the while loop below
+                boolean reachedEnd = false; // boolean that is used to terminate the while loop below (set to true when the end of the board is reached, i.e. when n is at the end of the board)
+                while(!reachedEnd) { // while loop that inspects all the squares from the inspected piece to the end of the board (or until another piece is found on the path)
+                    int[] newSquares; // array that is used to store the two squares that are above or below n (depending on the side of the player)
+                    if(isWhite) { // if statement that popluates the newSquares array and increments n in the appropraite direction
+                        newSquares = nextSquare(n, "up"); // get two squares that are above n 
+                        n -= 10; // decrement n (move two rows up)
                     } else {
-                        newSquares = nextSquare(n, "down");
-                        n += 10;
+                        newSquares = nextSquare(n, "down"); // get two squares that are below n 
+                        n += 10; // increment n (move two rows down)
                     }
                     // check if any of the squares contains a piece (if yes the inspected piece is not runaway, so brek the loop)
                     if(n >= 1 && n <= 50 && pieces[n] != DraughtsState.EMPTY) {
                         break;
                     }
-                    if(newSquares[0] >= 1 && newSquares[0] <= 50 && pieces[newSquares[0]] != DraughtsState.EMPTY) {
-                        break;
-                    }
-                    if(newSquares[1] >= 1 && newSquares[1] <= 50 && pieces[newSquares[1]] != DraughtsState.EMPTY) {
+                    // at least one of the two squares has to be empty
+                    if((newSquares[0] >= 1 && newSquares[0] <= 50 && pieces[newSquares[0]] != DraughtsState.EMPTY) || (newSquares[1] >= 1 && newSquares[1] <= 50 && pieces[newSquares[1]] != DraughtsState.EMPTY)) {
                         break;
                     }
                     
@@ -392,8 +390,10 @@ public class BoomShakaLaka extends DraughtsPlayer {
                         reachedEnd = true;
                     }
                 }
+                // if that checks whether the while loop was terminated because the end of the board was reached
+                // if this is the case then we have inspected all the squares from the piece to the end of the board and found no piece on the way (the piece is runaway)
                 if(reachedEnd) {
-                    runawayPieces++;
+                    runawayPieces++; // increment the number of runaway pieces
                 }
             }
         }
@@ -418,10 +418,10 @@ public class BoomShakaLaka extends DraughtsPlayer {
         
         
         // calculate the final result and return 
-        if(isWhite) {
-            eval += (whiteCount - blackCount)-whiteKings.size();
+        if(isWhite) { // depending on the side the player is playing, calculate material difference and subtract the number of trapped kings
+            eval += (whiteCount - blackCount) - whiteKings.size();
         } else {
-            eval += (blackCount - whiteCount)-blackKings.size();
+            eval += (blackCount - whiteCount) - blackKings.size();
         }
         eval += protectedNumber + protectedMiddleSquares + runawayPieces;
         
