@@ -4,7 +4,10 @@ import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.MIN_VALUE;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.Hashtable;
 import java.util.List;
+import java.util.Random;
 import nl.tue.s2id90.draughts.DraughtsState;
 import nl.tue.s2id90.draughts.player.DraughtsPlayer;
 import org10x10.dam.game.Move;
@@ -12,11 +15,33 @@ import org10x10.dam.game.Move;
 /**
  * Group 15 - Petar Galic & Filip Davidovic
  */
+// "struct" stored in the hash table
+// stores the depth at which the node was when the field got hashed, the heuristic evaluation of the node & the best evaluated move in the node
+class HashFieldValue {
+    public static final int HASH_EXACT = 0; // flag that explains that the evaluation in this hash field is definite evaluation (no alpha/beta cut-offs)
+    public static final int HASH_BETA = 1; // flag that explains that there was a beta cut-off (evaluation is at least beta or higher)
+    public static final int HASH_ALPHA = 2; // flag that explains that there was an alpha cut-off (evaluation was not as high as alpha)
+    public int depth; // the greater the number the closer to the root
+    public int evaluation;
+    public Move bestMove;
+    public int flag;
+    
+    HashFieldValue(int depth, int evaluation, Move bestMove, int flag) {
+        this.depth = depth;
+        this.evaluation = evaluation;
+        this.bestMove = bestMove;
+        this.flag = flag;
+    }
+}
+
 public class BoomShakaLaka extends DraughtsPlayer {
     private int bestValue = 0;
     int maxSearchDepth;
     int currentSearchDepth; // used by iterative deepening 
     boolean isWhite;
+    private final Random random = new Random();
+    private final long[][] zobristTable;
+    Hashtable<Long, HashFieldValue> transpositionTable = new Hashtable<>();
     
     /** boolean that indicates that the GUI asked the player to stop thinking. */
     private boolean stopped;
@@ -24,6 +49,12 @@ public class BoomShakaLaka extends DraughtsPlayer {
     public BoomShakaLaka(int maxSearchDepth) {
         super("thumbnail.jpg");
         this.maxSearchDepth = maxSearchDepth;
+        this.zobristTable = new long[50][4];
+        for(int i = 0; i < 50; i++) {
+            for(int j = 0; j < 4; j++) {
+                this.zobristTable[i][j] = random.nextLong();
+            }
+        }
     }
     
     @Override public Move getMove(DraughtsState s) {
@@ -40,12 +71,7 @@ public class BoomShakaLaka extends DraughtsPlayer {
                 // store the bestMove found uptill now
                 // NB this is not done in case of an AIStoppedException in alphaBeta()
                 bestMove  = node.getBestMove();
-
-                // print the results for debugging reasons
-                System.err.format(
-                    "%s: depth= %2d, best move = %5s, value=%d\n", 
-                    this.getClass().getSimpleName(), currentSearchDepth, bestMove, bestValue
-                );
+                
                 currentSearchDepth++;
             }
         } catch (AIStoppedException ex) {  /* nothing to do */  }
@@ -80,6 +106,40 @@ public class BoomShakaLaka extends DraughtsPlayer {
         return moves.isEmpty()? null : moves.get(0);
     }
     
+    // function that calculates the Zobrist hash value of a board state
+    // it does so in a two step process:
+    // 1. generate a 50x4 array of pseudorandom long numbers (64-bits), where 50 represents the number of squares on the board and 4 represents the four possible pieces (white/black kings and normal pieces). this is done in the constructor of this class
+    // 2. for each piece on the board XOR its positions random long number agains the current Zobrist hash value (h).
+    // for example, a white king's random number on the second square is stored in zorbistTable[1][0]
+    // indexes are the following:
+    // WHITEKING = 0, WHITEPIECE = 1, BLACKKING = 2, BLACKPIECE = 3
+    private long getZobristHash(int[] board) {
+        long h = 0L;
+        for(int i = 1; i < board.length; i++) {
+            if(board[i] != DraughtsState.EMPTY) {
+                int index = 0;
+                switch(board[i]) {
+                    case DraughtsState.WHITEKING:
+                        index = 0;
+                        break;
+                    case DraughtsState.WHITEPIECE:
+                        index = 1;
+                        break;
+                    case DraughtsState.BLACKKING:
+                        index = 2;
+                        break;
+                    case DraughtsState.BLACKPIECE:
+                        index = 3;
+                        break;
+                    default:
+                        break;
+                }
+                h = h ^ zobristTable[i - 1][index];
+            }
+        }
+        return h;
+    }
+    
     /** Implementation of alphaBeta that automatically chooses the white player
      *  as maximizing player and the black player as minimizing player.
      * @param rootNode contains DraughtsState and has field to which the best move can be assigned.
@@ -91,6 +151,32 @@ public class BoomShakaLaka extends DraughtsPlayer {
      **/
     int alphaBeta(DraughtsNode rootNode, int alpha, int beta, int depth) throws AIStoppedException {
         return alphaBetaMax(rootNode, alpha, beta, depth);
+    }
+    
+    // method that orders possible moves by the following criteria:
+    // 1. evaluation of each of the states after making a move
+    // since this is an ordering for alphaBetaMin this method orders them in ascending order
+    List<Move> orderMovesMin(DraughtsState state, List<Move> possibleMoves) {
+        possibleMoves.sort(new Comparator<Move>() {
+            @Override
+            public int compare(Move m1, Move m2) {
+                state.doMove(m1);
+                int m1Eval = evaluate(state);
+                state.undoMove(m1);
+                state.doMove(m2);
+                int m2Eval = evaluate(state);
+                state.undoMove(m2);
+                
+                if(m1Eval == m2Eval) {
+                    return 0; // two states have an equal evaluation
+                } else if(m1Eval < m2Eval) {
+                    return 1; // first state has a lower evaluation than the second state
+                } else {
+                    return -1; // second state has a lower evaluation than the first state
+                }
+            }
+        });
+        return possibleMoves;
     }
     
     /** Does an alphaBeta computation with the given alpha and beta
@@ -116,20 +202,66 @@ public class BoomShakaLaka extends DraughtsPlayer {
             return evaluate(node.getState());
         }
         DraughtsState state = node.getState();
-        List<Move> possibleMoves = state.getMoves(); // all possible moves from the given state
+        // check whether the transposition table contains an entry for this state
+        long zobristHash = getZobristHash(state.getPieces()); // get the zobrist hash of the state
+        HashFieldValue transpositionTableValue = transpositionTable.get(zobristHash);
+        if(transpositionTableValue != null) {
+            if(transpositionTableValue.depth >= depth) { // there is an entry in the hash table for this state, check whether that value has a higher depth than the one at which this node is
+                switch(transpositionTableValue.flag) { // return the appropriate value and set the best move based on the flag
+                    case HashFieldValue.HASH_EXACT:
+                        node.setBestMove(transpositionTableValue.bestMove);
+                    case HashFieldValue.HASH_BETA:
+                        node.setBestMove(transpositionTableValue.bestMove);
+                }
+                return transpositionTableValue.evaluation;
+            } // else first search the best move from this hash field 
+        }
+        
+        List<Move> possibleMoves = orderMovesMin(state, state.getMoves()); // all possible moves from the given state ordered in ascending order
+        Move bestMove = null;
         for(Move possibleMove : possibleMoves) {            
             state.doMove(possibleMove); // advance from the current state with the selected move
             int betaN = alphaBetaMax(new DraughtsNode(state), alpha, beta, depth - 1);
             if(betaN < beta) {
                 beta = betaN;
+                bestMove = possibleMove;
             }
             state.undoMove(possibleMove); // unadvance from the derrived state with the selected move to get back to the current state
             if(beta <= alpha) { // return beta and terminate since this node is not going to be reached
+                transpositionTable.put(zobristHash, new HashFieldValue(depth, alpha, null, HashFieldValue.HASH_ALPHA));
                 return alpha;
             }
         }
+        node.setBestMove(bestMove);
+        transpositionTable.put(zobristHash, new HashFieldValue(depth, beta, bestMove, HashFieldValue.HASH_EXACT));
         return beta; 
      }
+     
+     // method that orders possible moves by the following criteria:
+    // 1. evaluation of each of the states after making a move
+    // since this is an ordering for alphaBetaMax this method orders them in descending order
+    List<Move> orderMovesMax(DraughtsState state, List<Move> possibleMoves) {
+        possibleMoves.sort(new Comparator<Move>() {
+            @Override
+            public int compare(Move m1, Move m2) {
+                state.doMove(m1);
+                int m1Eval = evaluate(state);
+                state.undoMove(m1);
+                state.doMove(m2);
+                int m2Eval = evaluate(state);
+                state.undoMove(m2);
+                
+                if(m1Eval == m2Eval) {
+                    return 0; // two states have an equal evaluation
+                } else if(m1Eval < m2Eval) {
+                    return -1; // first state has a lower evaluation than the second state
+                } else {
+                    return 1; // second state has a lower evaluation than the first state
+                }
+            }
+        });
+        return possibleMoves;
+    }
     
     int alphaBetaMax(DraughtsNode node, int alpha, int beta, int depth) throws AIStoppedException {
         if (stopped) { stopped = false; throw new AIStoppedException(); } // check for the termination request by the GUI
@@ -137,7 +269,23 @@ public class BoomShakaLaka extends DraughtsPlayer {
             return evaluate(node.getState());
         }
         DraughtsState state = node.getState();
-        List<Move> possibleMoves = state.getMoves(); // all possible moves from the given state
+        // check whether the transposition table contains an entry for this state
+        long zobristHash = getZobristHash(state.getPieces()); // get the zobrist hash of the state
+        HashFieldValue transpositionTableValue = transpositionTable.get(zobristHash);
+        if(transpositionTableValue != null) {
+            if(transpositionTableValue.depth >= depth) { // there is an entry in the hash table for this state, check whether that value has a higher depth than the one at which this node is
+                switch(transpositionTableValue.flag) { // alpha cut-offs don't store the best move because "there is none". if the stored evaluation was an alpha cut-off we need to search the node again.
+                    case HashFieldValue.HASH_EXACT:
+                        node.setBestMove(transpositionTableValue.bestMove);
+                        return transpositionTableValue.evaluation; // return the stored evaluation
+                    case HashFieldValue.HASH_BETA:
+                        node.setBestMove(transpositionTableValue.bestMove);
+                        return transpositionTableValue.evaluation; // return the stored evaluation
+                }
+            } // else first search the best move from this hash field 
+        }
+        
+        List<Move> possibleMoves = orderMovesMax(state, state.getMoves()); // all possible moves from the given state ordered in descending order
         Move bestMove = null;
         for(Move possibleMove : possibleMoves) {
             state.doMove(possibleMove); // advance from the current state with the selected move
@@ -148,10 +296,12 @@ public class BoomShakaLaka extends DraughtsPlayer {
             }
             state.undoMove(possibleMove); // unadvance from the derrived state with the selected move to get back to the current state
             if(alpha >= beta) { // return beta and terminate since this node is not going to be reached
+                transpositionTable.put(zobristHash, new HashFieldValue(depth, alpha, bestMove, HashFieldValue.HASH_BETA));
                 return beta;
             }
         }
         node.setBestMove(bestMove);
+        transpositionTable.put(zobristHash, new HashFieldValue(depth, beta, bestMove, HashFieldValue.HASH_EXACT));
         return alpha; 
     }
     
@@ -163,7 +313,7 @@ public class BoomShakaLaka extends DraughtsPlayer {
             }
         }
         
-        return false; // return false if the match is not found
+        return false; // return false if a match is not found
     }
     
     // A method that checks whether the given square is protected
@@ -302,24 +452,17 @@ public class BoomShakaLaka extends DraughtsPlayer {
             switch (pieces[i]) { 
                 case DraughtsState.BLACKKING: // if the piece is a black king, add the king weight multiplied with the square weight to the black's piece count
                     blackCount += squareWeights[i - 1] * kingWeight;
-                    blackKings.add(i);
-                   
+                    blackKings.add(i); 
                     break;
                 case DraughtsState.BLACKPIECE: // if the piece is a black piece, add the normal piece weight multiplied with the square weight to the black's piece count
                     blackCount += squareWeights[i - 1] * normalWeight;
-                    lastBlackPiece = i;
                     break;
                 case DraughtsState.WHITEKING: // if the piece is a white king, add the king weight multiplied with the square weight to the white's piece count
                     whiteCount += squareWeights[i - 1] * kingWeight;
                     whiteKings.add(i);
-                    
                     break;
                 case DraughtsState.WHITEPIECE: // if the piece is a white piece, add the normal piece weight multiplied with the square weight to the white's piece count
                     whiteCount += squareWeights[i - 1] * normalWeight;
-                    if (!firstWhite) {
-                        lastWhitePiece = i;
-                        firstWhite = true;
-                    }
                     break;
                 default:
                     break;
@@ -409,16 +552,16 @@ public class BoomShakaLaka extends DraughtsPlayer {
         }
         
         //trapped kings
-        List<Move> availableMoves = state.getMoves();//get all available moves
+        List<Move> availableMoves = state.getMoves();
         for(Move move: availableMoves) {
-            if (move.isKingMove()) {//check whether the move is by a king
+            if (move.isKingMove()) {
                 if (isWhite) {
-                    if (whiteKings.contains(move.getBeginPiece())) { // check whether the king was able to make any moves before this one
-                        whiteKings.remove(move.getBeginPiece()); // if this is the first move the king could make, remove him from the list of kings because it is not trapped
+                    if (whiteKings.contains(move.getBeginPiece())) {
+                        whiteKings.remove(move.getBeginPiece());
                     }
                 }
                 else {
-                    if(blackKings.contains(move.getBeginPiece())) { // same condition for black king
+                    if(blackKings.contains(move.getBeginPiece())) {
                         blackKings.remove(move.getBeginPiece());
                     }
                 }
@@ -459,9 +602,9 @@ public class BoomShakaLaka extends DraughtsPlayer {
         
         // calculate the final result and return 
         if(isWhite) { // depending on the side the player is playing, calculate material difference and subtract the number of trapped kings
-            eval += (whiteCount - blackCount) - whiteKings.size()+numberOfPieces;
+            eval += (whiteCount - blackCount) - whiteKings.size();
         } else {
-            eval += (blackCount - whiteCount) - blackKings.size() + numberOfPieces;
+            eval += (blackCount - whiteCount) - blackKings.size();
         }
         eval += protectedNumber + protectedMiddleSquares + runawayPieces;
         
