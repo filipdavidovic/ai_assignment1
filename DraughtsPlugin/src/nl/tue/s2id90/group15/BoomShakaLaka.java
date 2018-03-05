@@ -288,6 +288,9 @@ public class BoomShakaLaka extends DraughtsPlayer {
         int eval = 0; // variable used to calculate the heuristic evaluation of the state
         ArrayList<Integer> blackKings = new ArrayList<>();
         ArrayList<Integer> whiteKings = new ArrayList<>();
+        int lastBlackPiece = 0;
+        int lastWhitePiece = 0;
+        boolean firstWhite = false;
         
         // material difference with weights
         int whiteCount = 0; // number of white's pieces
@@ -299,17 +302,24 @@ public class BoomShakaLaka extends DraughtsPlayer {
             switch (pieces[i]) { 
                 case DraughtsState.BLACKKING: // if the piece is a black king, add the king weight multiplied with the square weight to the black's piece count
                     blackCount += squareWeights[i - 1] * kingWeight;
-                    blackKings.add(i); 
+                    blackKings.add(i);
+                   
                     break;
                 case DraughtsState.BLACKPIECE: // if the piece is a black piece, add the normal piece weight multiplied with the square weight to the black's piece count
                     blackCount += squareWeights[i - 1] * normalWeight;
+                    lastBlackPiece = i;
                     break;
                 case DraughtsState.WHITEKING: // if the piece is a white king, add the king weight multiplied with the square weight to the white's piece count
                     whiteCount += squareWeights[i - 1] * kingWeight;
                     whiteKings.add(i);
+                    
                     break;
                 case DraughtsState.WHITEPIECE: // if the piece is a white piece, add the normal piece weight multiplied with the square weight to the white's piece count
                     whiteCount += squareWeights[i - 1] * normalWeight;
+                    if (!firstWhite) {
+                        lastWhitePiece = i;
+                        firstWhite = true;
+                    }
                     break;
                 default:
                     break;
@@ -399,29 +409,59 @@ public class BoomShakaLaka extends DraughtsPlayer {
         }
         
         //trapped kings
-        List<Move> availableMoves = state.getMoves();
+        List<Move> availableMoves = state.getMoves();//get all available moves
         for(Move move: availableMoves) {
-            if (move.isKingMove()) {
+            if (move.isKingMove()) {//check whether the move is by a king
                 if (isWhite) {
-                    if (whiteKings.contains(move.getBeginPiece())) {
-                        whiteKings.remove(move.getBeginPiece());
+                    if (whiteKings.contains(move.getBeginPiece())) { // check whether the king was able to make any moves before this one
+                        whiteKings.remove(move.getBeginPiece()); // if this is the first move the king could make, remove him from the list of kings because it is not trapped
                     }
                 }
                 else {
-                    if(blackKings.contains(move.getBeginPiece())) {
+                    if(blackKings.contains(move.getBeginPiece())) { // same condition for black king
                         blackKings.remove(move.getBeginPiece());
                     }
                 }
             }
         }
         
+        //formation heuristics
+        int numberOfPieces = 0;
+        if (isWhite) {
+            int row = lastWhitePiece/5; // get the furthest row that has white pieces on it
+            for (int i = 1; i <5 ;i++) { // check how many white pieces are on that row
+                switch(pieces[row*5+i]){
+                case DraughtsState.WHITEPIECE:
+                    numberOfPieces++;
+                    break;
+                case DraughtsState.WHITEKING:
+                    numberOfPieces++;
+                    break;
+                }
+                        
+            }
+        } else {
+            int row = lastBlackPiece/5; // get the furthest row that has a black piece on it
+            for (int i = 1; i <5 ;i++) {//check how many black pieces are on the furthest row
+                switch(pieces[row*5+i]){
+                case DraughtsState.BLACKPIECE:
+                    numberOfPieces++;
+                    break;
+                case DraughtsState.BLACKKING:
+                    numberOfPieces++;
+                    break;
+                }
+                        
+            }
+            
+        }
         
         
         // calculate the final result and return 
         if(isWhite) { // depending on the side the player is playing, calculate material difference and subtract the number of trapped kings
-            eval += (whiteCount - blackCount) - whiteKings.size();
+            eval += (whiteCount - blackCount) - whiteKings.size()+numberOfPieces;
         } else {
-            eval += (blackCount - whiteCount) - blackKings.size();
+            eval += (blackCount - whiteCount) - blackKings.size() + numberOfPieces;
         }
         eval += protectedNumber + protectedMiddleSquares + runawayPieces;
         
