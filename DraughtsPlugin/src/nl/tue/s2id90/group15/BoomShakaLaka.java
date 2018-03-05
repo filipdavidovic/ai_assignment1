@@ -296,12 +296,12 @@ public class BoomShakaLaka extends DraughtsPlayer {
             }
             state.undoMove(possibleMove); // unadvance from the derrived state with the selected move to get back to the current state
             if(alpha >= beta) { // return beta and terminate since this node is not going to be reached
-                transpositionTable.put(zobristHash, new HashFieldValue(depth, alpha, bestMove, HashFieldValue.HASH_BETA));
+                transpositionTable.put(zobristHash, new HashFieldValue(depth, beta, bestMove, HashFieldValue.HASH_BETA));
                 return beta;
             }
         }
         node.setBestMove(bestMove);
-        transpositionTable.put(zobristHash, new HashFieldValue(depth, beta, bestMove, HashFieldValue.HASH_EXACT));
+        transpositionTable.put(zobristHash, new HashFieldValue(depth, alpha, bestMove, HashFieldValue.HASH_EXACT));
         return alpha; 
     }
     
@@ -552,21 +552,21 @@ public class BoomShakaLaka extends DraughtsPlayer {
         }
         
         //trapped kings
-        List<Move> availableMoves = state.getMoves();
-        for(Move move: availableMoves) {
-            if (move.isKingMove()) {
-                if (isWhite) {
-                    if (whiteKings.contains(move.getBeginPiece())) {
-                        whiteKings.remove(move.getBeginPiece());
-                    }
-                }
-                else {
-                    if(blackKings.contains(move.getBeginPiece())) {
-                        blackKings.remove(move.getBeginPiece());
-                    }
-                }
-            }
-        }
+//        List<Move> availableMoves = state.getMoves();
+//        for(Move move: availableMoves) {
+//            if (move.isKingMove()) {
+//                if (isWhite) {
+//                    if (whiteKings.contains(move.getBeginPiece())) {
+//                        whiteKings.remove(move.getBeginPiece());
+//                    }
+//                }
+//                else {
+//                    if(blackKings.contains(move.getBeginPiece())) {
+//                        blackKings.remove(move.getBeginPiece());
+//                    }
+//                }
+//            }
+//        }
         
         //formation heuristics
         int numberOfPieces = 0;
